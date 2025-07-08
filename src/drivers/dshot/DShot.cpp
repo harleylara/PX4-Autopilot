@@ -434,84 +434,84 @@ bool DShot::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 		}
 	}
 
-	if (stop_motors) {
 
-		int telemetry_index = 0;
+	// TODO: reimplement motor commands
 
-		// when motors are stopped we check if we have other commands to send
-		for (int i = 0; i < (int)num_outputs; i++) {
-			if (_current_command.valid() && (_current_command.motor_mask & (1 << i))) {
-				// for some reason we need to always request telemetry when sending a command
-				up_dshot_motor_command(i, _current_command.command, true);
+	// int telemetry_index = 0;
 
-			} else {
-				up_dshot_motor_command(i, DShot_cmd_motor_stop, telemetry_index == requested_telemetry_index);
-			}
+	// // when motors are stopped we check if we have other commands to send
+	// for (int i = 0; i < (int)num_outputs; i++) {
+	// 	if (_current_command.valid() && (_current_command.motor_mask & (1 << i))) {
+	// 		// for some reason we need to always request telemetry when sending a command
+	// 		up_dshot_motor_command(i, _current_command.command, true);
 
-			telemetry_index += _mixing_output.isFunctionSet(i);
-		}
+	// 	} else {
+	// 		up_dshot_motor_command(i, DShot_cmd_motor_stop, telemetry_index == requested_telemetry_index);
+	// 	}
 
-		if (_current_command.valid()) {
-			--_current_command.num_repetitions;
+	// 	telemetry_index += _mixing_output.isFunctionSet(i);
+	// }
 
-			if (_current_command.num_repetitions == 0 && _current_command.save) {
-				_current_command.save = false;
-				_current_command.num_repetitions = 10;
-				_current_command.command = dshot_command_t::DShot_cmd_save_settings;
-			}
-		}
+	// if (_current_command.valid()) {
+	// 	--_current_command.num_repetitions;
 
-	} else {
-		int telemetry_index = 0;
+	// 	if (_current_command.num_repetitions == 0 && _current_command.save) {
+	// 		_current_command.save = false;
+	// 		_current_command.num_repetitions = 10;
+	// 		_current_command.command = dshot_command_t::DShot_cmd_save_settings;
+	// 	}
+	// }
 
-		for (int i = 0; i < (int)num_outputs; i++) {
+	int telemetry_index = 0;
 
-			uint16_t output = outputs[i];
+	for (int i = 0; i < (int)num_outputs; i++) {
 
-			if (output == DSHOT_DISARM_VALUE) {
-				up_dshot_motor_command(i, DShot_cmd_motor_stop, telemetry_index == requested_telemetry_index);
+		uint16_t output = outputs[i];
 
-			} else {
+		if (output == DSHOT_DISARM_VALUE) {
+			up_dshot_motor_command(i, DShot_cmd_motor_stop, telemetry_index == requested_telemetry_index);
 
-				// DShot 3D splits the throttle ranges in two.
-				// This is in terms of DShot values, code below is in terms of actuator_output
-				// Direction 1) 48 is the slowest, 1047 is the fastest.
-				// Direction 2) 1049 is the slowest, 2047 is the fastest.
-				if (_param_dshot_3d_enable.get() || (_reversible_outputs & (1u << i))) {
-					if (output >= _param_dshot_3d_dead_l.get() && output < _param_dshot_3d_dead_h.get()) {
-						output = DSHOT_DISARM_VALUE;
+		} else {
+
+			// DShot 3D splits the throttle ranges in two.
+			// This is in terms of DShot values, code below is in terms of actuator_output
+			// Direction 1) 48 is the slowest, 1047 is the fastest.
+			// Direction 2) 1049 is the slowest, 2047 is the fastest.
+			if (_param_dshot_3d_enable.get() || (_reversible_outputs & (1u << i))) {
+				if (output >= _param_dshot_3d_dead_l.get() && output < _param_dshot_3d_dead_h.get()) {
+					output = DSHOT_DISARM_VALUE;
+
+				} else {
+					bool upper_range = output >= 1000;
+
+					if (upper_range) {
+						output -= 1000;
 
 					} else {
-						bool upper_range = output >= 1000;
-
-						if (upper_range) {
-							output -= 1000;
-
-						} else {
-							output = 999 - output; // lower range is inverted
-						}
-
-						float max_output = 999.f;
-						float min_output = max_output * _param_dshot_min.get();
-						output = math::min(max_output, (min_output + output * (max_output - min_output) / max_output));
-
-						if (upper_range) {
-							output += 1000;
-						}
-
+						output = 999 - output; // lower range is inverted
 					}
-				}
 
-				up_dshot_motor_data_set(i, math::min(output, static_cast<uint16_t>(DSHOT_MAX_THROTTLE)),
-							telemetry_index == requested_telemetry_index);
+					float max_output = 999.f;
+					float min_output = max_output * _param_dshot_min.get();
+					output = math::min(max_output, (min_output + output * (max_output - min_output) / max_output));
+
+					if (upper_range) {
+						output += 1000;
+					}
+
+				}
 			}
 
-			telemetry_index += _mixing_output.isFunctionSet(i);
+			up_dshot_motor_data_set(i, math::min(output, static_cast<uint16_t>(DSHOT_MAX_THROTTLE)),
+						telemetry_index == requested_telemetry_index);
 		}
 
-		// clear commands when motors are running
-		_current_command.clear();
+		telemetry_index += _mixing_output.isFunctionSet(i);
 	}
+
+	// TODO
+	// clear commands when motors are running
+	// _current_command.clear();
 
 	up_dshot_trigger();
 
