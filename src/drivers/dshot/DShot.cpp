@@ -414,7 +414,7 @@ void DShot::mixerChanged()
 
 }
 
-bool DShot::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
+bool DShot::updateOutputs(uint16_t outputs[MAX_ACTUATORS],
 			  unsigned num_outputs, unsigned num_control_groups_updated)
 {
 	if (!_outputs_on) {
@@ -423,9 +423,10 @@ bool DShot::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 
 	int requested_telemetry_index = -1;
 
+	// TODO: revisit this
 	if (_telemetry) {
 		// check for an ESC info request. We only process it when we're not expecting other telemetry data
-		if (_request_esc_info.load() != nullptr && !_waiting_for_esc_info && stop_motors
+		if (_request_esc_info.load() != nullptr && !_waiting_for_esc_info
 		    && !_telemetry->expectingData() && !_current_command.valid()) {
 			requested_telemetry_index = request_esc_info();
 
